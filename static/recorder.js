@@ -4,8 +4,6 @@ let rec;
 let recordUrl;
 let audioResponseHandler;
 
-//Solo grabo el URL a llamar (e.g. /audio) y el 'handler'
-//o 'callback' a llamar cuando termine la grabacion
 function recorder(url, handler) {
     recordUrl = url;
     if (typeof handler !== "undefined") {
@@ -13,34 +11,30 @@ function recorder(url, handler) {
     }
 }
 
-/**
- * Al ser un proyecto pequeño uso doc.getById como maniaco
- * Si no te gusta, puedes cambiarlo ;)
- */
 async function record() {
     try {
         document.getElementById("text").innerHTML = "<i>Grabando...</i>";
         document.getElementById("record").style.display="none";
         document.getElementById("stop").style.display="";
-        document.getElementById("record-stop-label").style.display="block"
-        document.getElementById("record-stop-loading").style.display="none"
-        document.getElementById("stop").disabled=false
+        document.getElementById("record-stop-label").style.display="block";
+        document.getElementById("record-stop-loading").style.display="none";
+        document.getElementById("stop").disabled=false;
 
         blobs = [];
 
-        //Grabar audio, blabla
-        stream = await navigator.mediaDevices.getUserMedia({audio:true, video:false})
+        stream = await navigator.mediaDevices.getUserMedia({audio:true, video:false});
         rec = new MediaRecorder(stream);
         rec.ondataavailable = e => {
             if (e.data) {
                 blobs.push(e.data);
             }
-        }
+        };
         
         rec.onstop = doPreview;
         
         rec.start();
     } catch (e) {
+        console.error("Error al iniciar el grabador de audio:", e);
         alert("No fue posible iniciar el grabador de audio! Favor de verificar que se tenga el permiso adecuado, estar en HTTPS, etc...");
     }
 }
@@ -52,7 +46,6 @@ function doPreview() {
         console.log("Tenemos blobios!");
         const blob = new Blob(blobs);
 
-        //Usar fetch para enviar el audio grabado a Pythonio
         var fd = new FormData();
         fd.append("audio", blob, "audio");
 
@@ -60,11 +53,15 @@ function doPreview() {
             method: "POST",
             body: fd,
         })
-        .then((response) => response.json())
+        .then(response => {
+            if (!response.ok) {
+                throw new Error("La solicitud POST no se completó correctamente. Código de estado: " + response.status);
+            }
+            return response.json();
+        })
         .then(audioResponseHandler)
         .catch(err => {
-            //Puedes hacer algo más inteligente aquí
-            console.log("Oops: Ocurrió un error", err);
+            console.error("Oops: Ocurrió un error", err);
         });
     }
 }
@@ -77,10 +74,8 @@ function stop() {
     rec.stop();
 }
 
-//Llamar al handler en caso que exista
 function handleAudioResponse(response){
     if (!response || response == null) {
-        //TODO subscribe you thief
         console.log("No response");
         return;
     }
